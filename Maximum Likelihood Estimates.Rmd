@@ -1,0 +1,365 @@
+---
+title: "Untitled"
+author: "Kate"
+date: '11 марта 2018 г '
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library("bbmle")
+```
+
+###Оценки методом максимального правдоподобия
+
+##Вариант 9.
+Случайная величина Y имеет негативное биномиальное распределение. Исследуйте состоятельность и скорость сходимости оценок параметров.
+
+В каждом варианте описано распределение случайной величины Y. Задание можно разделить на несколько частей:
+• Моделирование выборки из n независимых реализаций Y.
+• Написание функции правдоподобия.
+• Написание процедуры оценивания параметров (с учетом естественных ограничений на область допустимых значений параметров).
+• Исследование указанных свойств оценок оценок параметров.
+
+
+
+Итак:
+
+• Моделирование выборки из n независимых реализаций Y .
+
+```{r}
+Sample <- function(size, prob, n){
+  rnbinom(n, size,prob)
+}
+```
+
+
+• Написание функции правдоподобия.
+
+```{r}
+
+FuncPravd <- function(size, prob, sample) {
+  size <- max(1,size)
+  if(prob<0) prob=0
+  else if(prob>1) prob=1
+  -sum(dnbinom(x = sample, size, prob, log=TRUE))
+}
+```
+
+
+• Написание процедуры оценивания параметров (с учетом естественных ограничений на область допустимых значений параметров).
+
+```{r}
+EstOMP <- function(size, prob, n)
+{
+  sam <- Sample(size, prob, n)
+  OMP <- mle2(minuslogl = FuncPravd, start = list(size = 1, prob = 0.1),  data = list(sample = sam), method = "BFGS")#, lower = c(size = 1, prob = 1e-9), upper = c(size = Inf, prob = 1))
+  
+ p <- profile(OMP)
+print(confint(OMP))
+    
+
+  
+  c(EstSize = coef(OMP)[1], EstProb = coef(OMP)[2])
+}
+
+```
+
+Проверим, как считает:
+
+```{r}
+EstOMP(5,0.2,1000)
+EstOMP(5,0.2,10000) #Тут лучше)))
+```
+
+
+• Исследование указанных свойств оценок оценок параметров.
+
+Скорость сходимости и дисперсия оценок. Для исследования состоятельности и скорости сходимости оценок строились графики зависимости оценки стандартного отклонения оценок ????n, ????n и ????n, ????n от объема выборки n.
+
+###Скорость сходимости:
+
+
+```{r}
+Size <- c()
+Prob <- c()
+
+Test <- function(j){
+for(i in (1:10)){
+  n<-200*j
+  a <- EstOMP(5,0.2,n)
+  Size[i] <-a[1]
+  Prob[i] <-a[2]
+}
+  Size <- var(Size)
+  Prob <- var(Prob)
+  list(Size=Size, Prob=Prob)
+}
+
+```
+
+
+```{r}
+D1 <- c()
+D2 <- c()
+for(j in (1:10)){
+  R <- Test(j)
+  D1[j] <- R$Size
+  D2[j] <- R$Prob
+}
+```
+
+
+```{r}
+plot(seq(200,2000,200), D1, type="l", col="red", main="Скорость сходимости параметра Size")
+plot(seq(200,2000,200), D2, type="l", col="red", main="Скорость сходимости параметра Prob")
+```
+
+
+```{r}
+EstOMP2 <- function(size, prob, n)
+{
+  sam <- Sample(size, prob, n)
+  OMP <- mle2(minuslogl = FuncPravd, start = list(size = 1, prob = 0.1),  data = list(sample = sam), method = "L-BFGS-B", lower = c(size = 1, prob = 1e-9), upper = c(size = Inf, prob = 1))
+  
+# p <- profile(m)
+# plot(p)
+    
+c(Conf1=confint(OMP)[2], Conf1=confint(OMP)[4])
+}
+
+Prob3 <- c()
+
+Test <- function(j){
+for(i in (1:10)){
+  n<-200*j
+  a <- EstOMP2(5,0.2,n)
+  Prob[i] <-log(a[2]-a[1])
+}
+  list(Size=Size, Prob=Prob)
+}
+
+x <- c()
+for(i in (1:2000)){
+  x[i] <- log(i)
+}
+
+D22 <- c()
+for(j in (1:10)){
+  R <- Test(j)
+  D22[j] <- R$Prob
+}
+
+plot(log(seq(200,2000,200)), D22, type="p", col="red", main="Зависимость ширины доверительного 
+     интервала от размера выборки для Prob")
+
+```
+
+```{r}
+lm(D22~log(seq(200,2000,200)))
+```
+
+###Состоятельность:
+
+```{r}
+#Test2 <- function(){
+#for(i in (1:10)){
+#  a <- EstOMP(5,0.2,100)
+#  Size[i] <-a[1]
+#  Prob[i] <-a[2]
+#}
+#  list(Size=Size, Prob=Prob)
+#}
+
+```
+
+```{r}
+#parameter.estimation(5,0.2,10)
+```
+
+
+```{r}
+Ist <- c()
+Ist2 <- c()
+Size2 <- c()
+Prob2 <- c()
+for(i in (1:400)){
+  a <- EstOMP(5,0.2,i*10)
+  Size2[i] <-a[1]
+  Prob2[i] <-a[2]
+  
+}
+
+
+
+for(j in (1:1000)){
+  Ist[j] <- 5
+  Ist2[j] <- 0.2
+}
+```
+
+```{r}
+plot(Size2, type="l", xlim=c(1,450), ylim=c(2,8))
+lines(Ist, type="l", col="red")
+
+plot(Prob2, type="l", xlim=c(1,450), ylim=c(0.1,0.3))
+lines(Ist2, type="l", col="red")
+
+```
+
+
+
+проверим асимптотическую несмещенность:
+
+```{r}
+mean(Size2)
+mean(Prob2)
+
+```
+
+Если оценка асимптотически несмещенная и её дисперсия стремится к нулю, то такая оценка будет состоятельной.
+
+Проверим доверительные интервалы начиная с 10000:
+
+```{r}
+EstOMP3 <- function(size, prob, n)
+{
+  sam <- Sample(size, prob, n)
+  OMP <- mle2(minuslogl = FuncPravd, start = list(size = 1, prob = 0.1),  data = list(sample = sam), method = "BFGS")#, lower = c(size = 1, prob = 1e-9), upper = c(size = Inf, prob = 1))
+  
+# p <- profile(m)
+# plot(p)
+    
+c(ConfS1=confint(OMP)[1], ConfP1=confint(OMP)[2], ConfS2=confint(OMP)[3], ConfP2=confint(OMP)[4])
+}
+
+EstOMP4 <- function(size, prob, n)
+{
+  sam <- Sample(size, prob, n)
+  OMP <- mle2(minuslogl = FuncPravd, start = list(size = 5, prob = 0.1),  data = list(sample = sam), fixed = list(size = 5), method = "BFGS")#, lower = c(size = 1, prob = 1e-9), upper = c(size = Inf, prob = 1))
+  
+# p <- profile(m)
+# plot(p)
+    
+c(ConfS1=confint(OMP)[1], ConfP1=confint(OMP)[2])
+}
+
+#EstOMP3(5,0.2,10000)
+EstOMP4(5,0.2,10000)
+
+```
+
+```{r}
+#DovP <- c()
+#Prob3 <- c()
+Size5 <- 0
+Prob5 <- 0
+
+Test <- function(j){
+  n<-(10000*j)+20000
+  a <- EstOMP3(5,0.2,n)
+  Size5 <-log(a[3]-a[1])
+  Prob5 <-log(a[4]-a[2])
+  
+  list(Size=Size5, Prob=Prob5)
+}
+
+
+D11 <- c()
+D22 <- c()
+for(j in (1:5)){
+  print(j)
+  R <- Test(j)
+  D11[j] <- R$Size
+  D22[j] <- R$Prob
+}
+
+```
+
+
+```{r}
+Size7 <- 0
+Prob7 <- 0
+
+Test2 <- function(j){
+  n<-(10000*j)+20000
+  a <- EstOMP4(5,0.2,n)
+  Prob5 <-log(a[2]-a[1])
+  
+  list(Prob=Prob5)
+}
+
+
+D33 <- c()
+for(j in (1:5)){
+  print(j)
+  R <- Test2(j)
+  D33[j] <- R$Prob
+}
+
+```
+
+```{r}
+D11
+D22
+D33
+```
+
+```{r}
+#plot(log(seq(10000,90000,10000)), D11, type="p", col="red", main="Зависимость ширины доверительного 
+#     интервала от размера выборки для Size")
+plot(log(seq(30000,70000,10000)), D22, type="l", col="red", main="Зависимость ширины доверительного 
+     интервала от размера выборки для Prob", ylim=c(-7,-5))
+lines(log(seq(30000,70000,10000)), D33, type="l", col="blue")
+```
+
+
+```{r}
+lm(D22~log(seq(30000,70000,10000)))
+lm(D33~log(seq(30000,70000,10000)))
+```
+
+
+И Асимптотическая несмещенность:
+
+```{r}
+Ist <- c()
+Ist2 <- c()
+
+MeanSize <- c()
+MeanProb <- c()
+
+Size6 <- c()
+Prob6 <- c()
+
+for(k in (1:5)){
+a <- EstOMP(5,0.2,10000)
+Size6[i] <-a[1]
+Prob6[i] <-a[2]
+}
+
+MeanSize[1] <- mean(Size6)
+MeanProb[1] <- mean(Prob6)
+
+for(k in (1:5)){
+a <- EstOMP(5,0.2,40000)
+Size6[i] <-a[1]
+Prob6[i] <-a[2]
+}
+
+MeanSize[2] <- mean(Size6)
+MeanProb[2] <- mean(Prob6)
+
+for(k in (1:5)){
+a <- EstOMP(5,0.2,80000)
+Size6[i] <-a[1]
+Prob6[i] <-a[2]
+}
+
+MeanSize[3] <- mean(Size6)
+MeanProb[3] <- mean(Prob6)
+
+MeanSize
+MeanProb
+```
+
+
